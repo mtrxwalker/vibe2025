@@ -27,6 +27,29 @@
         #todoList th:nth-child(2) {
             width: 90%;
         }
+        .action-btn {
+            cursor: pointer;
+            background: #f0f0f0;
+            color: #555;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            width: 24px;
+            height: 24px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 20px;
+            display: inline-block;
+            margin: 0 2px;
+        }
+        .action-btn:hover {
+            background: #e0e0e0;
+        }
+        .delete-btn {
+            color: #ff4444;
+        }
+        .edit-btn {
+            color: #4444ff;
+        }
         .add-form {
             margin-top: 20px;
             width: 70%;
@@ -40,12 +63,32 @@
             padding: 8px;
             width: 20%;
         }
+        .action-btn {
+            cursor: pointer;
+            background: #f0f0f0;
+            color: #555;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            width: 24px;
+            height: 24px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 20px;
+            display: inline-block;
+            margin: 0 2px;
+        }
+        .action-btn:hover {
+            background: #e0e0e0;
+        }
+        .edit-input {
+            width: 100%;
+            padding: 5px;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 <body>
-
 <h2 style="text-align: center;">To-Do List</h2>
-
 <table id="todoList">
     <thead>
         <tr>
@@ -58,7 +101,6 @@
         {{rows}}
     </tbody>
 </table>
-
 <div class="add-form">
     <input type="text" id="newItem" placeholder="Enter new item">
     <button onclick="addItem()">Add</button>
@@ -84,6 +126,7 @@
     }
 
     function addItem() {
+    async function addItem() {
         const newItemInput = document.getElementById('newItem');
         const newItemText = newItemInput.value.trim();
 
@@ -91,14 +134,107 @@
             items.push({ id: nextId++, text: newItemText });
             newItemInput.value = '';
             renderList();
+        if (!newItemText) return;
+
+        try {
+            const response = await fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `text=${encodeURIComponent(newItemText)}`
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                newItemInput.value = '';
+                window.location.reload();
+            } else {
+                alert('Failed to add item: ' + (result.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to add item');
         }
     }
 
     function removeItem(index) {
         items.splice(index, 1);
         renderList();
+    async function removeItem(id) {
+        if (confirm('Are you sure you want to delete this item?')) {
+            try {
+                const response = await fetch('/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `id=${id}`
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    window.location.reload();
+                } else {
+                    alert('Failed to delete item: ' + (result.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to delete item');
+            }
+        }
+    }
+
+    function enableEdit(id) {
+        const textCell = document.querySelector(`td.item-text[data-id="${id}"]`);
+        const currentText = textCell.textContent;
+
+        textCell.innerHTML = `
+            <input type="text" class="edit-input" value="${currentText.replace(/"/g, '&quot;')}" 
+                   onkeydown="handleEditKey(event, ${id})">
+        `;
+        textCell.querySelector('input').focus();
+    }
+
+    function handleEditKey(event, id) {
+        if (event.key === 'Enter') {
+            saveEdit(id);
+        } else if (event.key === 'Escape') {
+            window.location.reload();
+        }
+    }
+
+    async function saveEdit(id) {
+        const input = document.querySelector(`td.item-text[data-id="${id}"] input`);
+        const newText = input.value.trim();
+
+        if (!newText) {
+            alert('Text cannot be empty');
+            return;
+        }
+
+        try {
+            const response = await fetch('/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `id=${id}&text=${encodeURIComponent(newText)}`
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                window.location.reload();
+            } else {
+                alert('Failed to update item: ' + (result.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to update item');
+        }
     }
 </script>
 
 </body>
+</html>
 </html>
